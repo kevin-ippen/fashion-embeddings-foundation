@@ -41,10 +41,13 @@ ENV/
 # Data files (don't commit large datasets)
 data/
 *.csv
-*.json
 *.parquet
 *.db
 *.sqlite
+
+# Allow schema files
+!schemas/*.json
+!**/*schema*.json
 
 # Images
 *.jpg

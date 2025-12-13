@@ -1,0 +1,155 @@
+{
+  "table_name": "main.fashion_demo.product_embeddings_multimodal",
+  "description": "Product catalog with CLIP multimodal embeddings (image, text, hybrid)",
+  "row_count": 44417,
+  "created_date": "2025-12-08",
+  "schema": {
+    "product_id": {
+      "type": "INT",
+      "nullable": false,
+      "description": "Primary key"
+    },
+    "product_display_name": {
+      "type": "STRING",
+      "nullable": false,
+      "description": "Product name/title"
+    },
+    "master_category": {
+      "type": "STRING",
+      "nullable": true,
+      "description": "Top-level category",
+      "values": [
+        "Apparel",
+        "Accessories",
+        "Footwear",
+        "Personal Care",
+        "Free Items",
+        "Sporting Goods",
+        "Home"
+      ]
+    },
+    "sub_category": {
+      "type": "STRING",
+      "nullable": true,
+      "description": "Secondary category (45 unique values)"
+    },
+    "article_type": {
+      "type": "STRING",
+      "nullable": true,
+      "description": "Specific product type (143 unique values)"
+    },
+    "base_color": {
+      "type": "STRING",
+      "nullable": true,
+      "description": "Primary color (46 unique values)"
+    },
+    "gender": {
+      "type": "STRING",
+      "nullable": true,
+      "description": "Target gender",
+      "values": ["Men", "Women", "Boys", "Girls", "Unisex"]
+    },
+    "season": {
+      "type": "STRING",
+      "nullable": true,
+      "description": "Seasonal category",
+      "values": ["Summer", "Winter", "Fall", "Spring"]
+    },
+    "usage": {
+      "type": "STRING",
+      "nullable": true,
+      "description": "Usage context",
+      "values": ["Casual", "Formal", "Sports", "Ethnic", "Smart Casual", "Travel", "Party"]
+    },
+    "year": {
+      "type": "INT",
+      "nullable": true,
+      "description": "Product year (2011-2018)"
+    },
+    "price": {
+      "type": "DOUBLE",
+      "nullable": true,
+      "description": "Product price in INR",
+      "range": [24, 3500]
+    },
+    "image_path": {
+      "type": "STRING",
+      "nullable": true,
+      "description": "Path to product image in Unity Catalog Volume",
+      "example": "/Volumes/main/fashion_demo/raw_data/images/15970.jpg"
+    },
+    "image_embedding": {
+      "type": "ARRAY<DOUBLE>",
+      "nullable": true,
+      "description": "512-dimensional CLIP image embedding (L2-normalized)",
+      "dimension": 512,
+      "model": "openai/clip-vit-base-patch32",
+      "normalization": "L2"
+    },
+    "text_embedding": {
+      "type": "ARRAY<DOUBLE>",
+      "nullable": true,
+      "description": "512-dimensional CLIP text embedding (L2-normalized)",
+      "dimension": 512,
+      "model": "openai/clip-vit-base-patch32",
+      "normalization": "L2"
+    },
+    "hybrid_embedding": {
+      "type": "ARRAY<DOUBLE>",
+      "nullable": true,
+      "description": "512-dimensional hybrid embedding (50/50 weighted image+text, L2-normalized)",
+      "dimension": 512,
+      "model": "openai/clip-vit-base-patch32",
+      "normalization": "L2",
+      "weighting": {
+        "image": 0.5,
+        "text": 0.5
+      }
+    },
+    "embedding_model": {
+      "type": "STRING",
+      "nullable": true,
+      "description": "Model identifier",
+      "value": "clip-vit-b-32"
+    },
+    "embedding_dimension": {
+      "type": "INT",
+      "nullable": true,
+      "description": "Embedding vector dimension",
+      "value": 512
+    },
+    "updated_at": {
+      "type": "TIMESTAMP",
+      "nullable": true,
+      "description": "Last update timestamp"
+    }
+  },
+  "vector_search_indexes": [
+    {
+      "index_name": "main.fashion_demo.vs_image_search",
+      "embedding_column": "image_embedding",
+      "use_case": "Visual similarity search (image-to-image)"
+    },
+    {
+      "index_name": "main.fashion_demo.vs_text_search",
+      "embedding_column": "text_embedding",
+      "use_case": "Semantic text search (text-to-product)"
+    },
+    {
+      "index_name": "main.fashion_demo.vs_hybrid_search",
+      "embedding_column": "hybrid_embedding",
+      "use_case": "Combined multimodal search (best overall quality)"
+    }
+  ],
+  "delta_properties": {
+    "delta.enableChangeDataFeed": "true"
+  },
+  "statistics": {
+    "total_products": 44424,
+    "valid_embeddings": 44417,
+    "coverage": "99.98%",
+    "image_embedding_nulls": 12,
+    "text_embedding_nulls": 0,
+    "hybrid_embedding_nulls": 0
+  }
+}

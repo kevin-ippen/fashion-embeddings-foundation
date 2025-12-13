@@ -1,7 +1,8 @@
 """
-Vector Search Examples for Fashion Embeddings Foundation
+Vector Search Examples for Graph-Based Outfit Composition
 
-This module demonstrates how to use Mosaic AI Vector Search with the fashion embeddings.
+This module demonstrates how to use Mosaic AI Vector Search for the outfit composition project.
+Used in Phase 1 (validation) and Phase 2 (DeepFashion2 → Product mapping).
 """
 
 from databricks.vector_search.client import VectorSearchClient

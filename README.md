@@ -1,227 +1,191 @@
-# Fashion Embeddings Foundation
+# Graph-Based Outfit Composition System
 
-> **A comprehensive documentation repository for fashion ML projects built on Databricks**
+> **Build intelligent outfit recommendations using graph neural networks and fashion embeddings**
 
-This repository documents the foundational infrastructure for fashion AI/ML projects, including 77K+ embedded items, vector search infrastructure, and production deployment patterns.
+A complete implementation guide for building a production-ready outfit recommendation system on Azure Databricks using:
+- 22,000 DeepFashion2 outfit images (co-occurrence patterns)
+- 44,000 product catalog items (visual similarity)
+- Graph-based recommendations (Polyvore-style approach)
+- Databricks Vector Search & Unity Catalog
 
-## Overview
+## Project Status
 
-Two complementary fashion projects provide a robust foundation:
+**Current Status**: ✅ Ready to Build
+**Data Quality**: 22,000 clean DeepFashion2 embeddings (100% valid)
+**Implementation Time**: ~3 weeks (20-25 hours total)
 
-1. **[Fashion E-Commerce Site](https://github.com/YOUR_ORG/fashion-ecom-site)** - Production web application
-2. **[Fashion Visual Search](https://github.com/YOUR_ORG/fashion-visual-search)** - Research/MVP pipeline
+### Data Assets ✅
 
-**Quick Stats**:
-- ✅ 77,688 total embedded items (CLIP 512D)
-- ✅ 44,424 product catalog with 3 embedding types per item
-- ✅ 33,264 DeepFashion2 research images
-- ✅ 3 Vector Search indexes (image, text, hybrid)
-- ✅ Production API + React frontend
-- ✅ SmolVLM attribute extraction pipeline
+| Asset | Table | Count | Status |
+|-------|-------|-------|--------|
+| DeepFashion2 embeddings | `main.fashion_demo.deepfashion2_clip_embeddings` | 22,000 | ✅ Validated |
+| Product embeddings | `main.fashion_demo.product_embeddings_multimodal` | 44,424 | ✅ Available |
+| Product catalog | `main.fashion_demo.products` | 44,424 | ✅ Available |
+| Vector Search | 3 indexes (image/text/hybrid) | - | ✅ Operational |
 
-## What's Inside
+## What You'll Build
 
-### Core Documentation
+### Primary Features
 
-- **[FASHION_EMBEDDINGS_FOUNDATION_SUMMARY.md](FASHION_EMBEDDINGS_FOUNDATION_SUMMARY.md)** - Complete technical overview
-  - Data assets and schemas
-  - Vector search infrastructure
-  - Model serving configuration
-  - Search capabilities
-  - Performance metrics
-  - Next steps for ML projects
+1. **"Complete the Outfit"** - Given 1-2 items → suggest complementary items
+2. **Outfit Compatibility Scoring** - Rate if items go well together (0-1 score)
+3. **"Shop the Look"** - Upload outfit image → find products to recreate it
 
-- **[PRODUCTION_DATA_SNAPSHOT.md](PRODUCTION_DATA_SNAPSHOT.md)** - Actual production state
-  - ✅ Verified table names and schemas from code
-  - Real Unity Catalog + Lakebase PostgreSQL setup
-  - Complete configuration details
-  - Workspace and authentication info
-  - DeepFashion2 status and ambiguities
-  - Ready-to-use production references
+### Expected Performance
 
-- **[INFORMATION_GAPS_ANSWERS.md](INFORMATION_GAPS_ANSWERS.md)** - Graph project requirements analysis
-  - Answers to 31 planning questions
-  - Evidence from codebase analysis
-  - Confirmed vs. inferred vs. unknown status
-  - Recommendations for MVP approach
+| Metric | Target |
+|--------|--------|
+| Fill-in-blank accuracy | 50-65% |
+| Compatibility AUC | 0.75-0.85 |
+| API latency | <200ms |
+| Coverage | 70-85% of products |
 
-- **[queries/export_taxonomy.sql](queries/export_taxonomy.sql)** - Taxonomy mapping queries
-  - Maps 143 article types → 5 graph categories
-  - DeepFashion2 13-category mapping
-  - Creates `article_type_graph_mapping` table
-  - Validation and quality checks
+## Implementation Phases
 
-### Key Assets Documented
+This project is broken into **5 sequential phases**, each with a complete implementation guide:
 
-**Embeddings Tables**:
-- `main.fashion_demo.product_embeddings_multimodal` (44K products)
-- `main.fashion_demo.fashion_items_embeddings` (33K DeepFashion2)
+### Phase 1: Data Validation (2-3 hours) ✅
+**Guide**: [DATA_VALIDATION_GUIDE.md](DATA_VALIDATION_GUIDE.md)
 
-**Vector Search Indexes**:
-- `main.fashion_demo.vs_image_search` - Visual similarity
-- `main.fashion_demo.vs_text_search` - Semantic search
-- `main.fashion_demo.vs_hybrid_search` - Multimodal search
+Validate data quality and create working tables:
+- Verify 22K DeepFashion2 embeddings
+- Test Vector Search integration
+- Create working datasets
+- Export product taxonomy
 
-**Model Serving**:
-- `clip-multimodal-encoder` - CLIP ViT-B/32 endpoint
+**Start here!** All validation steps are documented.
 
-## Use Cases
+### Phase 2: Vector Search Mapping (3-4 hours)
+**Guide**: [VECTOR_SEARCH_MAPPING_GUIDE.md](VECTOR_SEARCH_MAPPING_GUIDE.md)
 
-This foundation enables building:
+Map DeepFashion2 items to product catalog:
+- Top-5 similarity matching
+- Quality control & validation
+- Category alignment checks
+- Store mappings in Delta table
 
-### Recommendation Systems
-- Collaborative filtering
-- Learning-to-Rank (LTR)
-- Context-aware recommendations
-- Sequential outfit building
+### Phase 3-5: Graph, Recommendations, API (15-20 hours)
+**Guide**: [PHASES_3_4_5_BRIEF.md](PHASES_3_4_5_BRIEF.md)
 
-### Computer Vision
-- Style transfer
-- Visual similarity search
-- Attribute detection
-- Outfit compatibility scoring
+- **Phase 3**: Build NetworkX graph with 100K+ edges
+- **Phase 4**: Pre-compute recommendations and evaluate
+- **Phase 5**: Deploy 3 API endpoints to production
 
-### NLP & Multimodal
-- Product description generation
-- Style explanation
-- Conversational shopping assistant
-- Query understanding
-
-### Personalization
-- Real-time preference learning
-- Multi-armed bandits
-- User embedding learning
-- Behavior-based ranking
+Full detailed guides provided after completing earlier phases.
 
 ## Quick Reference
 
-### Vector Search Query
-```python
-from databricks.vector_search.client import VectorSearchClient
+### Key Resources
 
-vsc = VectorSearchClient()
-index = vsc.get_index(
-    endpoint_name="fashion_vector_search",
-    index_name="main.fashion_demo.vs_hybrid_search"
-)
+**Documentation**:
+- [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) - Complete project plan with timeline
+- [DATA_VALIDATION_GUIDE.md](DATA_VALIDATION_GUIDE.md) - Phase 1 step-by-step guide
+- [VECTOR_SEARCH_MAPPING_GUIDE.md](VECTOR_SEARCH_MAPPING_GUIDE.md) - Phase 2 step-by-step guide
+- [queries/export_taxonomy.sql](queries/export_taxonomy.sql) - Taxonomy mapping queries
+- [examples/vector_search_examples.py](examples/vector_search_examples.py) - Python code samples
 
-results = index.similarity_search(
-    query_vector=embedding,
-    columns=["product_id", "product_display_name", "price"],
-    num_results=10
-)
-```
+**Data Tables**:
+- `main.fashion_demo.products` - Product catalog (44K items)
+- `main.fashion_demo.product_embeddings_multimodal` - Product embeddings
+- `main.fashion_demo.deepfashion2_clip_embeddings` - DeepFashion2 embeddings (22K items)
 
-### CLIP Encoding
-```python
-import requests
-
-url = f"{workspace_url}/serving-endpoints/clip-multimodal-encoder/invocations"
-payload = {"dataframe_records": [{"text": "red leather jacket"}]}
-response = requests.post(url, json=payload, headers=headers)
-embedding = response.json()["predictions"][0]  # 512D
-```
-
-### SQL Query
-```sql
--- Get products with embeddings
-SELECT
-    product_id,
-    product_display_name,
-    master_category,
-    base_color,
-    price
-FROM main.fashion_demo.product_embeddings_multimodal
-WHERE master_category = 'Apparel'
-    AND price BETWEEN 50 AND 150
-LIMIT 10;
-```
-
-## Performance Benchmarks
-
-| Metric | Value |
-|--------|-------|
-| Total Embedded Items | 77,688 |
-| Embedding Dimension | 512D (CLIP ViT-B/32) |
-| Vector Search Latency | <100ms (p95) |
-| Database Query Latency | ~10ms (Lakebase) |
-| Model Serving Capacity | 64 concurrent requests |
-| Embedding Coverage | 99.98% |
+**Infrastructure**:
+- Vector Search Endpoint: `fashion_vector_search`
+- CLIP Model Endpoint: `clip-multimodal-encoder`
+- Unity Catalog: `main.fashion_demo`
 
 ## Architecture
 
 ```
-Unity Catalog (Delta Lake)
-    ↓
-Vector Search Indexes (3)
-    ↓
-Recommendation Engine
-    ↓
-Production API + UI
+DeepFashion2 Outfits (22K)     Product Catalog (44K)
+         ↓                              ↓
+    CLIP Embeddings              CLIP Embeddings
+         ↓                              ↓
+         └──────── Vector Search ───────┘
+                        ↓
+              Graph Construction
+           (co-occurrence + similarity)
+                        ↓
+         Recommendation Engine (NetworkX)
+                        ↓
+              Pre-computed Results
+                        ↓
+         FastAPI Endpoints (<200ms)
 ```
-
-**Technologies**:
-- Databricks Unity Catalog
-- Mosaic AI Vector Search
-- CLIP ViT-B/32
-- FastAPI + React
-- Lakebase PostgreSQL
 
 ## Getting Started
 
 ### Prerequisites
-- Azure Databricks workspace
-- Unity Catalog enabled
-- Mosaic AI Vector Search enabled
-- Access to `main.fashion_demo` catalog
 
-### Quick Access
-```python
-# Unity Catalog tables
-CATALOG = "main"
-SCHEMA = "fashion_demo"
+**Access Required**:
+- ✅ Azure Databricks workspace
+- ✅ Unity Catalog: `main.fashion_demo` schema
+- ✅ Vector Search endpoint: `fashion_vector_search`
+- ✅ CLIP model serving endpoint
+- ✅ Databricks cluster (Standard_DS3_v2 or better)
 
-# Vector Search
-VS_ENDPOINT = "fashion_vector_search"
-VS_HYBRID_INDEX = "main.fashion_demo.vs_hybrid_search"
+**Skills Required**:
+- **Python**: Intermediate (PySpark, NetworkX)
+- **SQL**: Basic (SELECT, JOIN, GROUP BY)
+- **Databricks**: Basic (notebooks, clusters)
 
-# Model Serving
-CLIP_ENDPOINT = "clip-multimodal-encoder"
-```
+### Quick Start
+
+1. **Read the overview**:
+   ```bash
+   Start with PROJECT_OVERVIEW.md for the complete plan
+   ```
+
+2. **Begin Phase 1**:
+   ```bash
+   Open DATA_VALIDATION_GUIDE.md
+   Create a Databricks notebook
+   Run validation queries
+   ```
+
+3. **Follow sequentially**:
+   - Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5
 
 ## Project Structure
 
 ```
 fashion-embeddings-foundation/
-├── README.md                                    # This file
-├── FASHION_EMBEDDINGS_FOUNDATION_SUMMARY.md     # Detailed documentation
-├── examples/                                    # Code examples
-│   ├── vector_search_examples.py
-│   ├── recommendation_examples.py
-│   └── attribute_extraction_examples.py
-├── schemas/                                     # Table schemas
-│   ├── product_embeddings_schema.json
-│   └── user_features_schema.json
-└── notebooks/                                   # Reference notebooks
-    ├── 01_explore_embeddings.py
-    ├── 02_vector_search_demo.py
-    └── 03_recommendation_demo.py
+├── README.md                           # This file
+├── PROJECT_OVERVIEW.md                 # Complete implementation plan
+├── DATA_VALIDATION_GUIDE.md            # Phase 1 guide
+├── VECTOR_SEARCH_MAPPING_GUIDE.md      # Phase 2 guide
+├── PHASES_3_4_5_BRIEF.md              # Phases 3-5 overview
+├── docs/
+│   └── PRODUCTION_DATA_SNAPSHOT.md    # Technical reference
+├── examples/
+│   └── vector_search_examples.py      # Python code samples
+├── queries/
+│   └── export_taxonomy.sql            # SQL taxonomy mapping
+└── schemas/
+    └── product_embeddings_schema.json # Table schemas
 ```
 
-## Related Projects
+## Cost Estimate
 
-### Source Repositories
-- **[fashion-ecom-site](https://github.com/YOUR_ORG/fashion-ecom-site)** - Full-stack e-commerce application
-  - Production API with FastAPI
-  - React frontend
-  - Lakebase PostgreSQL backend
-  - SmolVLM attribute extraction
+**Development** (Phases 1-4): ~$60-115
+- Compute: $50-100
+- Vector Search: $5-10
+- Storage: <$1
 
-- **[fashion-visual-search](https://github.com/YOUR_ORG/fashion-visual-search)** - Research pipeline
-  - 8 production notebooks
-  - Python package with utilities
-  - Synthetic data generation
-  - Claude AI agent integration
+**Production** (Monthly): ~$40-50
+- Scheduled jobs: $38
+- API serving: Shared with existing infrastructure
+- Storage: <$1
+
+## Success Criteria
+
+By the end of this project, you will have:
+
+✅ Validated 22K outfit embeddings
+✅ 110K DeepFashion2→Product mappings
+✅ Graph with 44K nodes, 100K+ edges
+✅ Pre-computed recommendations with 50-65% accuracy
+✅ 3 production API endpoints (<200ms latency)
 
 ## Data Sources
 
@@ -229,31 +193,23 @@ fashion-embeddings-foundation/
 - **Dataset**: Fashion Product Images (Kaggle)
 - **URL**: https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-dataset
 - **Size**: 44,424 products
-- **Categories**: 7 master, 45 sub-categories, 143 article types
+- **Categories**: 143 article types across 7 master categories
 
 ### DeepFashion2
-- **Purpose**: Research and "complete the look" features
-- **Size**: 33,264 images
-- **Use Cases**: Outfit composition, style transfer
-
-## Contributing
-
-This is a documentation repository. To contribute:
-
-1. Update documentation in `FASHION_EMBEDDINGS_FOUNDATION_SUMMARY.md`
-2. Add code examples to `examples/`
-3. Include reference notebooks in `notebooks/`
-4. Update schemas in `schemas/` as tables evolve
+- **Purpose**: Outfit co-occurrence patterns
+- **Size**: 22,000 validated outfit images
+- **Use**: Graph edge construction (items that appear together)
 
 ## Support
 
 For questions or issues:
+- Review the troubleshooting sections in each guide
 - Open an issue in this repository
 - Contact: kevin.ippen@databricks.com
 
 ## License
 
-MIT License - See LICENSE file for details
+MIT License - See [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
 
@@ -261,11 +217,12 @@ MIT License - See LICENSE file for details
 - **Anthropic** - Claude AI
 - **OpenAI** - CLIP model
 - **Kaggle** - Fashion Product Images dataset
+- **DeepFashion2** - Outfit composition research data
 
 ---
 
 **Last Updated**: 2025-12-13
-**Status**: ✅ Production-ready foundation
+**Status**: ✅ Ready to Build
 **Version**: 1.0.0
 
-🚀 **Ready to build advanced fashion AI/ML projects!**
+🚀 **Start with [DATA_VALIDATION_GUIDE.md](DATA_VALIDATION_GUIDE.md) to begin Phase 1!**
