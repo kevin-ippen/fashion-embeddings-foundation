@@ -31,6 +31,26 @@ Two complementary fashion projects provide a robust foundation:
   - Performance metrics
   - Next steps for ML projects
 
+- **[PRODUCTION_DATA_SNAPSHOT.md](PRODUCTION_DATA_SNAPSHOT.md)** - Actual production state
+  - ✅ Verified table names and schemas from code
+  - Real Unity Catalog + Lakebase PostgreSQL setup
+  - Complete configuration details
+  - Workspace and authentication info
+  - DeepFashion2 status and ambiguities
+  - Ready-to-use production references
+
+- **[INFORMATION_GAPS_ANSWERS.md](INFORMATION_GAPS_ANSWERS.md)** - Graph project requirements analysis
+  - Answers to 31 planning questions
+  - Evidence from codebase analysis
+  - Confirmed vs. inferred vs. unknown status
+  - Recommendations for MVP approach
+
+- **[queries/export_taxonomy.sql](queries/export_taxonomy.sql)** - Taxonomy mapping queries
+  - Maps 143 article types → 5 graph categories
+  - DeepFashion2 13-category mapping
+  - Creates `article_type_graph_mapping` table
+  - Validation and quality checks
+
 ### Key Assets Documented
 
 **Embeddings Tables**:
