@@ -7,6 +7,7 @@ Quick validation before running full 22K mapping
 from databricks.sdk import WorkspaceClient
 from databricks.vector_search.client import VectorSearchClient
 import time
+import json
 
 # Initialize
 print("Initializing Databricks client...")
@@ -128,7 +129,15 @@ for batch_idx in range(total_batches):
     # Map each item
     for row in result.data_array:
         item_uid = row[0]
-        embedding = row[1]
+        embedding_raw = row[1]
+
+        # Parse embedding (SDK returns as JSON string)
+        if isinstance(embedding_raw, str):
+            embedding = json.loads(embedding_raw)
+        elif isinstance(embedding_raw, (list, tuple)):
+            embedding = list(embedding_raw)
+        else:
+            embedding = list(embedding_raw)
 
         try:
             results = vs_index.similarity_search(
