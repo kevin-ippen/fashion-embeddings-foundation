@@ -67,11 +67,12 @@ print(f"   Username: {os.environ['KAGGLE_USERNAME']}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 3. Download Dataset
+# MAGIC ## 3. Download and Extract Dataset
 
 # COMMAND ----------
 
 import os
+import zipfile
 
 # Create temp download directory
 download_dir = "/tmp/deepfashion2_download"
@@ -81,7 +82,7 @@ print(f"Downloading dataset: {KAGGLE_DATASET}")
 print(f"To: {download_dir}")
 print("This may take 5-10 minutes...")
 
-# Download dataset
+# Download dataset (it comes as a zip)
 from kaggle.api.kaggle_api_extended import KaggleApi
 api = KaggleApi()
 api.authenticate()
@@ -89,7 +90,7 @@ api.authenticate()
 api.dataset_download_files(
     KAGGLE_DATASET,
     path=download_dir,
-    unzip=True
+    unzip=False  # We'll manually extract it
 )
 
 print(f"\n✅ Download complete!")
@@ -97,10 +98,29 @@ print(f"\n✅ Download complete!")
 # List downloaded files
 files = os.listdir(download_dir)
 print(f"\nDownloaded {len(files)} files:")
-for f in sorted(files)[:20]:
+for f in sorted(files):
     print(f"  {f}")
-if len(files) > 20:
-    print(f"  ... and {len(files) - 20} more")
+
+# Extract the zip file
+zip_files = [f for f in files if f.endswith('.zip')]
+if zip_files:
+    zip_path = os.path.join(download_dir, zip_files[0])
+    print(f"\nExtracting {zip_files[0]}...")
+    print("This may take 5-10 minutes...")
+
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(download_dir)
+
+    print(f"✅ Extraction complete!")
+
+    # List extracted contents
+    files_after = os.listdir(download_dir)
+    print(f"\nExtracted contents:")
+    for f in sorted(files_after)[:20]:
+        if f != zip_files[0]:  # Don't list the zip file itself
+            print(f"  {f}")
+else:
+    print("\n⚠️  No zip file found - checking if already extracted...")
 
 # COMMAND ----------
 
@@ -164,16 +184,28 @@ import os
 # Create Volume directory if it doesn't exist
 dbutils.fs.mkdirs(TARGET_VOLUME)
 
-# Get source image directory
-image_source = image_dirs[0] if image_dirs else None
+# Find all image directories (train/validation/test)
+train_images = glob.glob(f"{download_dir}/**/train/image", recursive=True)
+val_images = glob.glob(f"{download_dir}/**/validation/image", recursive=True)
+test_images = glob.glob(f"{download_dir}/**/test/test/image", recursive=True)
 
-if image_source:
-    print(f"Copying images from: {image_source}")
-    print(f"To Volume: {TARGET_VOLUME}")
-    print(f"\nStarting with {INITIAL_SAMPLE} images for testing...")
+all_image_dirs = train_images + val_images + test_images
 
-    # Get image files
-    all_images = sorted(glob.glob(f"{image_source}/*.jpg") + glob.glob(f"{image_source}/*.png"))
+print(f"Found {len(all_image_dirs)} image directories:")
+for img_dir in all_image_dirs:
+    rel_path = img_dir.replace(download_dir, '')
+    print(f"  {rel_path}")
+
+if len(all_image_dirs) > 0:
+    # Collect all images from all directories
+    all_images = []
+    for img_dir in all_image_dirs:
+        images_in_dir = sorted(glob.glob(f"{img_dir}/*.jpg") + glob.glob(f"{img_dir}/*.png"))
+        print(f"\n  Found {len(images_in_dir):,} images in {os.path.basename(os.path.dirname(img_dir))}")
+        all_images.extend(images_in_dir)
+
+    print(f"\nTotal images across all splits: {len(all_images):,}")
+    print(f"Starting with {INITIAL_SAMPLE} images for testing...")
 
     if len(all_images) == 0:
         print("❌ No images found!")
@@ -231,23 +263,27 @@ print("Looking for metadata files...")
 
 metadata_df = None
 
-# Check for CSV files
+# Check for CSV files (prioritize train.csv as it has the most data)
 csv_files = glob.glob(f"{download_dir}/**/*.csv", recursive=True)
 if csv_files:
     print(f"\nFound {len(csv_files)} CSV files:")
     for csv in csv_files:
         print(f"  {os.path.basename(csv)}")
 
-    # Try to load the first one
+    # Find train.csv (largest dataset)
+    train_csv = [f for f in csv_files if 'train.csv' in f]
+    csv_to_load = train_csv[0] if train_csv else csv_files[0]
+
+    # Try to load it
     try:
         import pandas as pd
-        pdf = pd.read_csv(csv_files[0], nrows=5)
-        print(f"\n✅ Sample from {os.path.basename(csv_files[0])}:")
+        pdf = pd.read_csv(csv_to_load, nrows=5)
+        print(f"\n✅ Sample from {os.path.basename(csv_to_load)}:")
         print(pdf)
 
         # Load full dataset
         print(f"\nLoading full CSV...")
-        metadata_df = spark.read.csv(csv_files[0], header=True, inferSchema=True)
+        metadata_df = spark.read.csv(csv_to_load, header=True, inferSchema=True)
         print(f"✅ Loaded {metadata_df.count():,} rows")
 
     except Exception as e:
