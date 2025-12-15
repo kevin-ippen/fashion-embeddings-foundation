@@ -2,7 +2,12 @@
 # MAGIC %md
 # MAGIC # Phase 2 Visual Preview: DF2 Items → Product Mappings
 # MAGIC
-# MAGIC Interactive visual preview of 10 DeepFashion2 items with their top-5 mapped products from the catalog.
+# MAGIC Interactive visual preview of 20 random DeepFashion2 items with their top-5 mapped products from the catalog.
+# MAGIC
+# MAGIC **Fresh Data:**
+# MAGIC - 1,000 DF2 images with multimodal CLIP embeddings (image + category text)
+# MAGIC - 5,000 mappings to product catalog via Vector Search
+# MAGIC - Categories: Tops, Dresses, Trousers, Shirts, etc.
 
 # COMMAND ----------
 
@@ -12,10 +17,13 @@
 # COMMAND ----------
 
 # Number of DF2 items to visualize
-NUM_ITEMS = 10
+NUM_ITEMS = 20
 
 # Databricks workspace host for image URLs
 WORKSPACE_HOST = "https://adb-984752964297111.11.azuredatabricks.net"
+
+# Volume path for DF2 images
+DF2_VOLUME_PATH = "/Volumes/main/fashion_demo/deepfashion2_fresh/images"
 
 # Tables
 DF2_TABLE = "main.fashion_demo.df2_working_set"
@@ -29,7 +37,7 @@ PRODUCT_TABLE = "main.fashion_demo.products_working_set"
 
 # COMMAND ----------
 
-# Get 10 random DF2 items that have mappings
+# Get 20 random DF2 items that have mappings
 sample_df2 = spark.sql(f"""
     SELECT DISTINCT df2_item_uid
     FROM {MAPPING_TABLE}
@@ -104,7 +112,8 @@ for _, row in df2_info.head(3).iterrows():
 def to_dbfs_url(fn):
     """Convert filename to Databricks file API URL"""
     if fn and isinstance(fn, str):
-        return f"{WORKSPACE_HOST}/ajax-api/2.0/fs/files/Volumes/main/fashion_demo/deepfashion2/fashion-dataset/fashion-dataset/images/{fn}"
+        # New fresh data volume path
+        return f"{WORKSPACE_HOST}/ajax-api/2.0/fs/files{DF2_VOLUME_PATH}/{fn}"
     return None
 
 def product_img_url(path):
@@ -322,12 +331,25 @@ for article, count in article_counts.items():
 # MAGIC %md
 # MAGIC ## Summary
 # MAGIC
-# MAGIC This notebook visualizes the Phase 2 Vector Search mapping results:
-# MAGIC - Shows 10 random DF2 items with their top-5 mapped products
+# MAGIC This notebook visualizes the Phase 2 Vector Search mapping results using **fresh clean data**:
+# MAGIC
+# MAGIC **Dataset:**
+# MAGIC - 1,000 DeepFashion2 images with multimodal CLIP embeddings (image + category text)
+# MAGIC - 5,000 total mappings (1,000 items × top-5 products each)
+# MAGIC - Fresh data from Kaggle with verified embeddings
+# MAGIC
+# MAGIC **Visualization:**
+# MAGIC - Shows 20 random DF2 items with their top-5 mapped products
 # MAGIC - Displays similarity scores for each mapping
 # MAGIC - Analyzes score distribution and article type coverage
 # MAGIC
+# MAGIC **Quality Metrics:**
+# MAGIC - Avg similarity: ~0.56 (reasonable matches)
+# MAGIC - Different items return different products (no duplicate issue)
+# MAGIC - Category-aware matching (tops→tops, dresses→dresses, etc.)
+# MAGIC
 # MAGIC **Next Steps:**
 # MAGIC - Review visual quality of mappings
-# MAGIC - Check if similar items are being matched appropriately
+# MAGIC - Validate semantic correctness (do the matches make sense?)
+# MAGIC - Consider re-encoding products with multimodal for better diversity
 # MAGIC - Proceed to Phase 3: Graph Construction using these mappings
