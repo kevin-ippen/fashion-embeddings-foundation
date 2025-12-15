@@ -16,10 +16,11 @@
 
 # Source data
 SOURCE_TABLE = "main.fashion_demo.df2_images_fresh"
+METADATA_TABLE = "main.fashion_demo.df2_metadata_fresh"
 VOLUME_PATH = "/Volumes/main/fashion_demo/deepfashion2_fresh/images"
 
-# CLIP endpoint
-CLIP_ENDPOINT = "clip-image-encoder"
+# CLIP endpoint - using MULTIMODAL for image + text
+CLIP_ENDPOINT = "clip-multimodal-encoder"
 
 # Output table
 OUTPUT_TABLE = "main.fashion_demo.df2_working_set"
@@ -30,18 +31,39 @@ BATCH_SIZE = 50  # Process images in batches
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1. Load Fresh Images
+# MAGIC ## 1. Load Fresh Images with Metadata
 
 # COMMAND ----------
+
+from pyspark.sql.functions import regexp_extract, col
 
 # Load image catalog
 images_df = spark.table(SOURCE_TABLE)
 
-total_images = images_df.count()
-print(f"✅ Loaded image catalog: {total_images:,} images")
+# Load metadata
+metadata_df = spark.table(METADATA_TABLE)
+
+print(f"✅ Loaded image catalog: {images_df.count():,} images")
+print(f"✅ Loaded metadata: {metadata_df.count():,} records")
+
+# Extract image name from metadata path for joining
+metadata_clean = metadata_df.withColumn(
+    "filename",
+    regexp_extract(col("path"), r"([0-9]+\.jpg)", 1)
+).select("filename", "category_name", "category_id")
+
+# Join images with metadata to get category names
+images_with_metadata = images_df.join(
+    metadata_clean,
+    on="filename",
+    how="left"
+)
+
+joined_count = images_with_metadata.filter(col("category_name").isNotNull()).count()
+print(f"✅ Joined with metadata: {joined_count:,} images have category names")
 
 # Show sample
-display(images_df.limit(10))
+display(images_with_metadata.select("filename", "image_id", "category_name").limit(10))
 
 # COMMAND ----------
 
@@ -84,17 +106,19 @@ except Exception as e:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 3. Test Encoding One Image
+# MAGIC ## 3. Test Multimodal Encoding (Image + Text)
 
 # COMMAND ----------
 
 import base64
 
-# Get one test image
-test_row = images_df.first()
+# Get one test image with metadata
+test_row = images_with_metadata.first()
 test_path = test_row.image_path
+test_category = test_row.category_name if test_row.category_name else "fashion garment"
 
 print(f"Testing with: {test_row.filename}")
+print(f"Category: {test_category}")
 print(f"Path: {test_path}")
 
 try:
@@ -109,20 +133,25 @@ try:
     image_b64 = base64.b64encode(image_bytes).decode('utf-8')
     print(f"✅ Base64 encoded: {len(image_b64):,} characters")
 
-    # Call CLIP endpoint
+    # Call CLIP MULTIMODAL endpoint with image + text
     payload = {
         "dataframe_records": [{
-            "image": image_b64
+            "image": image_b64,
+            "text": test_category  # Include category text for multimodal
         }]
     }
 
-    response = requests.post(endpoint_url, headers=headers, json=payload, timeout=60)
+    print(f"\nCalling multimodal endpoint...")
+    print(f"  Image: {len(image_b64)} chars")
+    print(f"  Text: '{test_category}'")
+
+    response = requests.post(endpoint_url, headers=headers, json=payload, timeout=120)
 
     if response.status_code == 200:
         result = response.json()
         if 'predictions' in result and len(result['predictions']) > 0:
             embedding = result['predictions'][0]
-            print(f"✅ Got embedding: {len(embedding)}D vector")
+            print(f"\n✅ SUCCESS! Got multimodal embedding: {len(embedding)}D vector")
             print(f"   Sample values: {embedding[:5]}")
             print(f"   Sum: {sum(embedding):.4f}")
         else:
@@ -148,6 +177,8 @@ from pyspark.sql.functions import col, lit, array, struct
 from pyspark.sql.types import ArrayType, DoubleType, StructType, StructField, StringType
 import time
 
+total_images = images_with_metadata.count()
+
 print(f"Starting batch encoding of {total_images:,} images...")
 print(f"Batch size: {BATCH_SIZE}")
 print(f"Estimated time: ~{(total_images / BATCH_SIZE) * 2} minutes")
@@ -157,17 +188,17 @@ print()
 print("Reading images from Volume...")
 all_images_binary = spark.read.format("binaryFile").load(f"{VOLUME_PATH}/*.jpg")
 
-# Join with catalog to get metadata
-joined_df = images_df.join(
+# Join with catalog+metadata to get category names
+joined_df = images_with_metadata.join(
     all_images_binary.selectExpr("path as image_path", "content"),
     on="image_path",
     how="inner"
 )
 
-print(f"✅ Loaded {joined_df.count():,} images with content")
+print(f"✅ Loaded {joined_df.count():,} images with content and metadata")
 
 # Collect image data for batch processing
-image_data = joined_df.select("image_id", "filename", "image_path", "content").collect()
+image_data = joined_df.select("image_id", "filename", "image_path", "category_name", "content").collect()
 
 print(f"\nProcessing {len(image_data)} images in batches...")
 
@@ -193,14 +224,18 @@ for batch_idx in range(total_batches):
             # Encode as base64
             image_b64 = base64.b64encode(image_bytes).decode('utf-8')
 
-            # Call CLIP endpoint
+            # Get category text (with fallback)
+            category_text = row.category_name if row.category_name else "fashion garment"
+
+            # Call CLIP MULTIMODAL endpoint with image + text
             payload = {
                 "dataframe_records": [{
-                    "image": image_b64
+                    "image": image_b64,
+                    "text": category_text  # Include category for multimodal
                 }]
             }
 
-            response = requests.post(endpoint_url, headers=headers, json=payload, timeout=60)
+            response = requests.post(endpoint_url, headers=headers, json=payload, timeout=120)
 
             if response.status_code == 200:
                 result = response.json()
@@ -211,6 +246,7 @@ for batch_idx in range(total_batches):
                         'image_id': row.image_id,
                         'filename': row.filename,
                         'image_path': row.image_path,
+                        'category_name': category_text,
                         'clip_embedding': embedding
                     })
                     batch_success += 1
@@ -252,6 +288,7 @@ schema = StructType([
     StructField("image_id", StringType(), True),
     StructField("filename", StringType(), True),
     StructField("image_path", StringType(), True),
+    StructField("category_name", StringType(), True),
     StructField("clip_embedding", ArrayType(DoubleType()), True)
 ])
 
