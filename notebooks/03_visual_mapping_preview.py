@@ -109,11 +109,13 @@ for _, row in df2_info.head(3).iterrows():
 
 # COMMAND ----------
 
-def to_dbfs_url(fn):
-    """Convert filename to Databricks file API URL"""
-    if fn and isinstance(fn, str):
-        # New fresh data volume path
-        return f"{WORKSPACE_HOST}/ajax-api/2.0/fs/files{DF2_VOLUME_PATH}/{fn}"
+def to_dbfs_url(image_path):
+    """Convert image_path to Databricks file API URL"""
+    if image_path and isinstance(image_path, str):
+        # Remove 'dbfs:' prefix if present
+        clean_path = image_path.replace('dbfs:', '')
+        # Build file API URL
+        return f"{WORKSPACE_HOST}/ajax-api/2.0/fs/files{clean_path}"
     return None
 
 def product_img_url(path):
@@ -124,8 +126,8 @@ def product_img_url(path):
         return path
     return path
 
-# Build DF2 image URL map
-df2_info['df2_image_url'] = df2_info['filename'].apply(to_dbfs_url)
+# Build DF2 image URL map (use image_path, not filename)
+df2_info['df2_image_url'] = df2_info['image_path'].apply(to_dbfs_url)
 df2_url_map = dict(zip(df2_info['item_uid'], df2_info['df2_image_url']))
 
 # Convert product image paths to URLs
