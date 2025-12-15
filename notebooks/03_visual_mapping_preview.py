@@ -105,9 +105,31 @@ for _, row in df2_info.head(3).iterrows():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4. Build Image URLs
+# MAGIC ## 4. Build Image URLs and Load Images
 
 # COMMAND ----------
+
+import base64
+from pyspark.sql.functions import col
+
+def load_image_as_base64(image_path):
+    """Load image from Volume and convert to base64 for inline display"""
+    try:
+        # Remove dbfs: prefix if present
+        clean_path = image_path.replace('dbfs:', '')
+
+        # Read image using Spark
+        binary_df = spark.read.format("binaryFile").load(clean_path)
+        binary_data = binary_df.select("content").first()
+
+        if binary_data:
+            image_bytes = bytes(binary_data[0])
+            # Convert to base64
+            image_b64 = base64.b64encode(image_bytes).decode('utf-8')
+            return f"data:image/jpeg;base64,{image_b64}"
+    except Exception as e:
+        print(f"Error loading {image_path}: {e}")
+    return None
 
 def to_dbfs_url(image_path):
     """Convert image_path to Databricks file API URL"""
@@ -126,18 +148,18 @@ def product_img_url(path):
         return path
     return path
 
-# Build DF2 image URL map (use image_path, not filename)
-df2_info['df2_image_url'] = df2_info['image_path'].apply(to_dbfs_url)
-df2_url_map = dict(zip(df2_info['item_uid'], df2_info['df2_image_url']))
+# Load DF2 images as base64 (avoids file API permission issues)
+print("Loading DF2 images from Volume...")
+df2_info['df2_image_data'] = df2_info['image_path'].apply(load_image_as_base64)
+df2_url_map = dict(zip(df2_info['item_uid'], df2_info['df2_image_data']))
 
-# Convert product image paths to URLs
+# Convert product image paths to URLs (these work with file API)
 top5_pd['product_image_url'] = top5_pd['product_image_path'].apply(product_img_url)
 
-print("✅ Image URLs built")
-print(f"\nSample DF2 URL:")
-print(f"  {list(df2_url_map.values())[0]}")
-print(f"\nSample Product URL:")
-print(f"  {top5_pd['product_image_url'].iloc[0]}")
+print("✅ Images loaded")
+loaded_count = sum(1 for v in df2_url_map.values() if v is not None)
+print(f"   DF2 images: {loaded_count}/{len(df2_url_map)} loaded as base64")
+print(f"   Product images: Using file API URLs")
 
 # COMMAND ----------
 
