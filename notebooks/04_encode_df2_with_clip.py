@@ -54,7 +54,7 @@ display(sample_df.select("item_uid", "filename").limit(10))
 
 # COMMAND ----------
 
-# Test reading a single image file
+# Test reading a single image file using PySpark
 test_row = sample_df.first()
 test_filename = test_row.filename
 test_path = f"{VOLUME_BASE}/{test_filename}"
@@ -62,11 +62,15 @@ test_path = f"{VOLUME_BASE}/{test_filename}"
 print(f"Test image: {test_filename}")
 print(f"Full path: {test_path}")
 
-# Read image using dbutils
+# Read image using Spark binary file reader
 try:
     import base64
-    with open(test_path.replace("/Volumes", "/dbfs/Volumes"), "rb") as f:
-        image_bytes = f.read()
+
+    # Use Spark to read binary file from Volume
+    binary_df = spark.read.format("binaryFile").load(test_path)
+    binary_data = binary_df.select("content").first()
+    image_bytes = bytes(binary_data[0])
+
     print(f"✅ Successfully read {len(image_bytes)} bytes")
 
     # Test base64 encoding
@@ -74,6 +78,8 @@ try:
     print(f"✅ Base64 encoded: {len(image_b64)} characters")
 except Exception as e:
     print(f"❌ Error: {e}")
+    import traceback
+    traceback.print_exc()
 
 # COMMAND ----------
 
@@ -143,9 +149,9 @@ except Exception as e:
 
 import base64
 import requests
-from pyspark.sql.functions import udf, col
-from pyspark.sql.types import ArrayType, DoubleType, StringType
-import time
+from pyspark.sql.functions import pandas_udf, col
+from pyspark.sql.types import ArrayType, DoubleType
+import pandas as pd
 
 # Get auth
 token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
@@ -158,49 +164,77 @@ headers = {
 
 endpoint_url = f"{workspace_url}/serving-endpoints/{CLIP_ENDPOINT}/invocations"
 
-def encode_image_clip(filename):
-    """Encode a single image using CLIP endpoint"""
-    if not filename:
-        return None
+# Add image paths to DataFrame
+from pyspark.sql.functions import concat, lit
+sample_with_paths = sample_df.withColumn(
+    "full_image_path",
+    concat(lit(VOLUME_BASE), lit("/"), col("filename"))
+)
 
-    try:
-        # Read image from Volume
-        image_path = f"/dbfs/Volumes/main/fashion_demo/deepfashion2/fashion-dataset/fashion-dataset/images/{filename}"
+# Read all images using Spark binary file reader
+print("Reading images from Volume...")
+binary_df = spark.read.format("binaryFile").load(f"{VOLUME_BASE}/*.jpg")
 
-        with open(image_path, "rb") as f:
-            image_bytes = f.read()
+# Join with sample data
+joined_df = sample_with_paths.join(
+    binary_df.selectExpr("path as full_image_path", "content as image_content"),
+    on="full_image_path",
+    how="inner"
+)
 
-        # Encode as base64
-        image_b64 = base64.b64encode(image_bytes).decode('utf-8')
+print(f"✅ Loaded {joined_df.count()} images")
 
-        # Call CLIP endpoint
-        payload = {
-            "dataframe_records": [{
-                "image": image_b64
-            }]
-        }
+# Define pandas UDF for batch processing
+@pandas_udf(ArrayType(DoubleType()))
+def encode_images_batch(image_contents: pd.Series) -> pd.Series:
+    """Encode a batch of images using CLIP endpoint"""
+    import base64
+    import requests
 
-        response = requests.post(endpoint_url, headers=headers, json=payload, timeout=60)
+    results = []
 
-        if response.status_code == 200:
-            result = response.json()
-            if 'predictions' in result and len(result['predictions']) > 0:
-                return result['predictions'][0]
+    for image_bytes in image_contents:
+        try:
+            if image_bytes is None:
+                results.append(None)
+                continue
 
-        return None
+            # Convert to bytes if needed
+            if not isinstance(image_bytes, bytes):
+                image_bytes = bytes(image_bytes)
 
-    except Exception as e:
-        print(f"Error encoding {filename}: {e}")
-        return None
+            # Encode as base64
+            image_b64 = base64.b64encode(image_bytes).decode('utf-8')
 
-# Register UDF
-encode_udf = udf(encode_image_clip, ArrayType(DoubleType()))
+            # Call CLIP endpoint
+            payload = {
+                "dataframe_records": [{
+                    "image": image_b64
+                }]
+            }
 
-# Encode images (this will take a while - ~100 images * ~1-2 seconds each)
+            response = requests.post(endpoint_url, headers=headers, json=payload, timeout=60)
+
+            if response.status_code == 200:
+                result = response.json()
+                if 'predictions' in result and len(result['predictions']) > 0:
+                    results.append(result['predictions'][0])
+                else:
+                    results.append(None)
+            else:
+                results.append(None)
+
+        except Exception as e:
+            print(f"Error encoding image: {e}")
+            results.append(None)
+
+    return pd.Series(results)
+
+# Encode images
 print(f"Encoding {NUM_IMAGES} images with CLIP...")
 print("This will take 2-5 minutes...")
 
-encoded_df = sample_df.withColumn("new_embedding", encode_udf(col("filename")))
+encoded_df = joined_df.withColumn("new_embedding", encode_images_batch(col("image_content")))
 
 # Filter out failed encodings
 success_df = encoded_df.filter(col("new_embedding").isNotNull())
